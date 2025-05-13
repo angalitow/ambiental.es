@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Plataforma Colaborativa Ambiental</title>
+  <style>
+    /* Reset and base */
+    * {
+      box-sizing: border-box;
+    }
+    body, html {
+      margin: 0; padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f4f8;
+      color: #2c3e50;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      max-width: 350px;
+      max-height: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    header {
+      background-color: #2a9d8f;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-weight: 700;
+      font-size: 1.3rem;
+      user-select: none;
+    }
+
+    nav {
+      display: flex;
+      justify-content: space-around;
+      background: #264653;
+    }
+    nav button {
+      flex: 1;
+      padding: 0.6rem 0;
+      background: none;
+      border: none;
+      color: #a8dadc;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    nav button:hover {
+      background: #1b3130;
+    }
+    nav button.active {
+      background: #e9c46a;
+      color: #264653;
+      font-weight: 700;
+    }
+
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.8rem 1rem;
+    }
+
+    section {
+      display: none;
+    }
+    section.active {
+      display: block;
+    }
+
+    h2 {
+      text-align: center;
+      color: #264653;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Form styling */
+    form {
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    form label {
+      display: block;
+      margin-bottom: 0.4rem;
+      font-weight: 600;
+      color: #264653;
+    }
+    form input[type="text"],
+    form input[type="number"],
+    form select {
+      width: 100%;
+      padding: 0.4rem 0.5rem;
+      margin-bottom: 0.8rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      transition: border-color 0.3s;
+    }
+    form input[type="text"]:focus,
+    form input[type="number"]:focus,
+    form select:focus {
+      outline: none;
+      border-color: #2a9d8f;
+    }
+    form button {
+      background-color: #2a9d8f;
+      border: none;
+      color: white;
+      font-weight: 700;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+      font-size: 1rem;
+      transition: background-color 0.3s ease;
+    }
+    form button:hover {
+      background-color: #21867a;
+    }
+
+    /* Data display */
+    .data-list {
+      background: white;
+      margin-top: 1rem;
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      max-height: 190px;
+      overflow-y: auto;
+      font-size: 0.85rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      color: #2c3e50;
+    }
+    .data-list-item {
+      padding: 0.3rem 0;
+      border-bottom: 1px solid #ddd;
+    }
+    .data-list-item:last-child {
+      border-bottom: none;
+    }
+    .data-list-item span {
+      font-weight: 600;
+      color: #264653;
+    }
+
+    /* Charts placeholder style */
+    canvas {
+      margin-top: 1rem;
+      border-radius: 8px;
+      background: white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      display: block;
+      max-width: 100%;
+    }
+
+    /* Responsive for mobile height */
+    @media (max-height: 600px) {
+      main {
+        max-height: 440px; /* accommodate header and nav */
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>Plataforma Colaborativa Ambiental</header>
+  <nav>
+    <button id="tab-air" class="active" aria-controls="section-air" aria-selected="true" role="tab">Aire</button>
+    <button id="tab-water" aria-controls="section-water" aria-selected="false" role="tab">Agua</button>
+    <button id="tab-bio" aria-controls="section-bio" aria-selected="false" role="tab">Biodiversidad</button>
+  </nav>
+  <main>
+    <!-- Air Quality Section -->
+    <section id="section-air" class="active" role="tabpanel" aria-labelledby="tab-air">
+      <h2>Calidad del Aire</h2>
+      <form id="form-air">
+        <label for="location-air">Ubicación</label>
+        <input type="text" id="location-air" name="location" placeholder="Ej: Parque Central" required />
+        <label for="pm25-air">PM2.5 (µg/m³)</label>
+        <input type="number" id="pm25-air" name="pm25" min="0" max="500" step="0.1" required />
+        <label for="pm10-air">PM10 (µg/m³)</label>
+        <input type="number" id="pm10-air" name="pm10" min="0" max="500" step="0.1" required />
+        <button type="submit">Agregar Datos</button>
+      </form>
+      <div class="data-list" id="data-air-list" aria-live="polite" aria-relevant="additions">
+        <strong>Datos registrados:</strong>
+        <div id="list-air-items"></div>
+      </div>
+      <canvas id="chart-air" width="320" height="150" aria-label="Gráfico de calidad del aire" role="img"></canvas>
+    </section>
+
+    <!-- Water Quality Section -->
+    <section id="section-water" role="tabpanel" aria-labelledby="tab-water">
+      <h2>Calidad del Agua</h2>
+      <form id="form-water">
+        <label for="location-water">Ubicación</label>
+        <input type="text" id="location-water" name="location" placeholder="Ej: Río Verde" required />
+        <label for="ph-water">pH</label>
+        <input type="number" id="ph-water" name="ph" min="0" max="14" step="0.1" required />
+        <label for="turbidity-water">Turbidez (NTU)</label>
+        <input type="number" id="turbidity-water" name="turbidity" min="0" max="100" step="0.1" required />
+        <button type="submit">Agregar Datos</button>
+      </form>
+      <div class="data-list" id="data-water-list" aria-live="polite" aria-relevant="additions">
+        <strong>Datos registrados:</strong>
+        <div id="list-water-items"></div>
+      </div>
+      <canvas id="chart-water" width="320" height="150" aria-label="Gráfico de calidad del agua" role="img"></canvas>
+    </section>
+
+    <!-- Biodiversity Section -->
+    <section id="section-bio" role="tabpanel" aria-labelledby="tab-bio">
+      <h2>Biodiversidad</h2>
+      <form id="form-bio">
+        <label for="location-bio">Ubicación</label>
+        <input type="text" id="location-bio" name="location" placeholder="Ej: Reserva Natural" required />
+        <label for="species-bio">Especie Observada</label>
+        <input type="text" id="species-bio" name="species" placeholder="Ej: Guacamaya Roja" required />
+        <label for="count-bio">Cantidad</label>
+        <input type="number" id="count-bio" name="count" min="1" step="1" required />
+        <button type="submit">Agregar Datos</button>
+      </form>
+      <div class="data-list" id="data-bio-list" aria-live="polite" aria-relevant="additions">
+        <strong>Datos registrados:</strong>
+        <div id="list-bio-items"></div>
+      </div>
+      <canvas id="chart-bio" width="320" height="150" aria-label="Gráfico de biodiversidad" role="img"></canvas>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Tab navigation logic
+    const tabs = document.querySelectorAll('nav button');
+    const sections = document.querySelectorAll('main section');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Remove active from all
+        tabs.forEach(t => {
+          t.classList.remove('active');
+          t.setAttribute('aria-selected', 'false');
+        });
+        sections.forEach(s => s.classList.remove('active'));
+        // Activate clicked tab and section
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
+        const sectionId = tab.getAttribute('aria-controls');
+        document.getElementById(sectionId).classList.add('active');
+      });
+    });
+
+    // Storage keys
+    const STORAGE_KEYS = {
+      air: 'env-monitor-air',
+      water: 'env-monitor-water',
+      bio: 'env-monitor-bio'
+    };
+
+    // Initialize data stores from localStorage or empty
+    let dataAir = JSON.parse(localStorage.getItem(STORAGE_KEYS.air)) || [];
+    let dataWater = JSON.parse(localStorage.getItem(STORAGE_KEYS.water)) || [];
+    let dataBio = JSON.parse(localStorage.getItem(STORAGE_KEYS.bio)) || [];
+
+    // Functions to render lists
+    function renderList(idListContainer, items, callback) {
+      const container = document.getElementById(idListContainer);
+      container.innerHTML = '';
+      if(items.length === 0){
+        container.textContent = 'No hay datos registrados aún.';
+        return;
+      }
+      items.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'data-list-item';
+        div.innerHTML = callback(item, index);
+        container.appendChild(div);
+      });
+    }
+
+    // AIR data rendering
+    function renderAirList(){
+      renderList('list-air-items', dataAir, (item) => {
+        return `<span>${item.location}</span>: PM2.5 ${item.pm25} µg/m³, PM10 ${item.pm10} µg/m³`;
+      });
+    }
+
+    // WATER data rendering
+    function renderWaterList(){
+      renderList('list-water-items', dataWater, (item) => {
+        return `<span>${item.location}</span>: pH ${item.ph}, Turbidez ${item.turbidity} NTU`;
+      });
+    }
+
+    // BIODIVERSITY data rendering
+    function renderBioList(){
+      renderList('list-bio-items', dataBio, (item) => {
+        return `<span>${item.location}</span>: ${item.species} (${item.count})`;
+      });
+    }
+
+    // Save to localStorage
+    function saveData(){
+      localStorage.setItem(STORAGE_KEYS.air, JSON.stringify(dataAir));
+      localStorage.setItem(STORAGE_KEYS.water, JSON.stringify(dataWater));
+      localStorage.setItem(STORAGE_KEYS.bio, JSON.stringify(dataBio));
+    }
+
+    // Event handlers for forms
+    document.getElementById('form-air').addEventListener('submit', e => {
+      e.preventDefault();
+      const loc = e.target.location.value.trim();
+      const pm25 = parseFloat(e.target.pm25.value);
+      const pm10 = parseFloat(e.target.pm10.value);
+      if(loc && !isNaN(pm25) && !isNaN(pm10)){
+        dataAir.push({location: loc, pm25, pm10});
+        saveData();
+        renderAirList();
+        updateAirChart();
+        e.target.reset();
+      }
+    });
+
+    document.getElementById('form-water').addEventListener('submit', e => {
+      e.preventDefault();
+      const loc = e.target.location.value.trim();
+      const ph = parseFloat(e.target.ph.value);
+      const turbidity = parseFloat(e.target.turbidity.value);
+      if(loc && !isNaN(ph) && !isNaN(turbidity)){
+        dataWater.push({location: loc, ph, turbidity});
+        saveData();
+        renderWaterList();
+        updateWaterChart();
+        e.target.reset();
+      }
+    });
+
+    document.getElementById('form-bio').addEventListener('submit', e => {
+      e.preventDefault();
+      const loc = e.target.location.value.trim();
+      const species = e.target.species.value.trim();
+      const count = parseInt(e.target.count.value);
+      if(loc && species && !isNaN(count) && count > 0){
+        dataBio.push({location: loc, species, count});
+        saveData();
+        renderBioList();
+        updateBioChart();
+        e.target.reset();
+      }
+    });
+
+    // Chart.js instances and updates - show average values or sums by location/species
+    // AIR Chart - average PM2.5 and PM10 per location
+    let chartAir = null;
+    function updateAirChart(){
+      const ctx = document.getElementById('chart-air').getContext('2d');
+
+      // Calculate average PM2.5 and PM10 per location
+      const grouped = {};
+      dataAir.forEach(({location, pm25, pm10}) => {
+        if(!grouped[location]){
+          grouped[location] = {pm25Sum: 0, pm10Sum: 0, count: 0};
+        }
+        grouped[location].pm25Sum += pm25;
+        grouped[location].pm10Sum += pm10;
+        grouped[location].count++;
+      });
+      const labels = Object.keys(grouped);
+      const pm25Values = labels.map(loc => (grouped[loc].pm25Sum / grouped[loc].count).toFixed(1));
+      const pm10Values = labels.map(loc => (grouped[loc].pm10Sum / grouped[loc].count).toFixed(1));
+
+      if(chartAir){
+        chartAir.data.labels = labels;
+        chartAir.data.datasets[0].data = pm25Values;
+        chartAir.data.datasets[1].data = pm10Values;
+        chartAir.update();
+      } else {
+        chartAir = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'PM2.5 (µg/m³)',
+                data: pm25Values,
+                backgroundColor: 'rgba(231, 76, 60, 0.7)'
+              },
+              {
+                label: 'PM10 (µg/m³)',
+                data: pm10Values,
+                backgroundColor: 'rgba(52, 152, 219, 0.7)'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // WATER Chart - average pH and turbidity per location
+    let chartWater = null;
+    function updateWaterChart(){
+      const ctx = document.getElementById('chart-water').getContext('2d');
+
+      const grouped = {};
+      dataWater.forEach(({location, ph, turbidity}) => {
+        if(!grouped[location]){
+          grouped[location] = {phSum: 0, turbiditySum: 0, count: 0};
+        }
+        grouped[location].phSum += ph;
+        grouped[location].turbiditySum += turbidity;
+        grouped[location].count++;
+      });
+      const labels = Object.keys(grouped);
+      const phValues = labels.map(loc => (grouped[loc].phSum / grouped[loc].count).toFixed(2));
+      const turbidityValues = labels.map(loc => (grouped[loc].turbiditySum / grouped[loc].count).toFixed(1));
+
+      if(chartWater){
+        chartWater.data.labels = labels;
+        chartWater.data.datasets[0].data = phValues;
+        chartWater.data.datasets[1].data = turbidityValues;
+        chartWater.update();
+      } else {
+        chartWater = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'pH',
+                data: phValues,
+                backgroundColor: 'rgba(38, 166, 154, 0.7)'
+              },
+              {
+                label: 'Turbidez (NTU)',
+                data: turbidityValues,
+                backgroundColor: 'rgba(255, 193, 7, 0.8)'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 14,
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // BIODIVERSITY Chart - total counts per species
+    let chartBio = null;
+    function updateBioChart(){
+      const ctx = document.getElementById('chart-bio').getContext('2d');
+
+      const grouped = {};
+      dataBio.forEach(({species, count}) => {
+        if(!grouped[species]){
+          grouped[species] = 0;
+        }
+        grouped[species] += count;
+      });
+
+      const labels = Object.keys(grouped);
+      const counts = labels.map(spec => grouped[spec]);
+
+      if(chartBio){
+        chartBio.data.labels = labels;
+        chartBio.data.datasets[0].data = counts;
+        chartBio.update();
+      } else {
+        chartBio = new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels,
+            datasets: [{
+              data: counts,
+              backgroundColor: [
+                '#e76f51', '#f4a261', '#2a9d8f', 
+                '#264653', '#e9c46a', '#f4f1de',
+                '#8ecae6', '#219ebc', '#023047'
+              ]
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  font: {
+                    size: 12
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // Render initial lists and charts on load
+    renderAirList();
+    renderWaterList();
+    renderBioList();
+    updateAirChart();
+    updateWaterChart();
+    updateBioChart();
+  </script>
+</body>
+</html>
+
