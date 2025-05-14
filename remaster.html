@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Plugin de Remasterización de Canciones</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+  body {
+    font-family: 'Montserrat', sans-serif;
+    background: #121212;
+    color: #e0e0e0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  h1 {
+    margin-bottom: 10px;
+    font-weight: 700;
+    color: #00ff99;
+    text-align: center;
+  }
+  .container {
+    max-width: 500px;
+    background: #1e1e1e;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 0 18px #00ff99aa;
+    width: 100%;
+  }
+  label {
+    display: block;
+    margin-top: 15px;
+    font-weight: 600;
+  }
+  input[type="range"] {
+    width: 100%;
+    margin-top: 5px;
+  }
+  #file-label {
+    display: inline-block;
+    background: #00ff99;
+    color: #121212;
+    padding: 10px 20px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 15px;
+    user-select: none;
+  }
+  #file-input {
+    display: none;
+  }
+  button {
+    margin-top: 20px;
+    width: 100%;
+    padding: 12px 0;
+    border: none;
+    background: #00ff99;
+    color: #121212;
+    font-weight: 700;
+    font-size: 1.1rem;
+    border-radius: 30px;
+    cursor: pointer;
+    box-shadow: 0 0 12px #00ff99aa;
+    transition: background 0.3s ease;
+  }
+  button:hover:enabled {
+    background: #00cc77;
+  }
+  button:disabled {
+    background: #555;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  #status {
+    margin-top: 15px;
+    text-align: center;
+    font-weight: 600;
+    height: 22px;
+    color: #00ff99;
+  }
+  footer {
+    margin-top: auto;
+    color: #555;
+    font-size: 0.9rem;
+    text-align: center;
+    padding-top: 20px;
+  }
+  .slider-group {
+    margin-bottom: 10px;
+  }
+  .slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    opacity: 0.7;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Plugin de Remasterización</h1>
+<div class="container">
+  <label id="file-label" for="file-input" tabindex="0">Seleccionar canción antigua</label>
+  <input type="file" id="file-input" accept="audio/*" />
+  
+  <div class="slider-group">
+    <label for="bass">Bajo (Bass) -60dB a +12dB</label>
+    <input type="range" id="bass" min="-60" max="12" step="1" value="0" />
+    <div class="slider-labels"><span>-60dB</span><span>0dB</span><span>+12dB</span></div>
+  </div>
+  <div class="slider-group">
+    <label for="mid">Medios (Mid) -30dB a +30dB</label>
+    <input type="range" id="mid" min="-30" max="30" step="1" value="0" />
+    <div class="slider-labels"><span>-30dB</span><span>0dB</span><span>+30dB</span></div>
+  </div>
+  <div class="slider-group">
+    <label for="treble">Agudos (Treble) -30dB a +30dB</label>
+    <input type="range" id="treble" min="-30" max="30" step="1" value="0" />
+    <div class="slider-labels"><span>-30dB</span><span>0dB</span><span>+30dB</span></div>
+  </div>
+  <div class="slider-group">
+    <label for="compressorThreshold">Compresor Threshold (dB) -60 to 0</label>
+    <input type="range" id="compressorThreshold" min="-60" max="0" step="1" value="-30" />
+    <div class="slider-labels"><span>-60dB</span><span>-30dB</span><span>0dB</span></div>
+  </div>
+  <div class="slider-group">
+    <label for="reverbMix">Reverberación Mix 0% - 100%</label>
+    <input type="range" id="reverbMix" min="0" max="100" step="1" value="15" />
+    <div class="slider-labels"><span>0%</span><span>50%</span><span>100%</span></div>
+  </div>
+
+  <button id="playPauseBtn" disabled>Reproducir</button>
+  <div id="status"></div>
+</div>
+
+<footer>
+  &copy; 2024 Plugin Demo - Remasterización simple con Web Audio API
+</footer>
+
+<script>
+  const fileInput = document.getElementById('file-input');
+  const playPauseBtn = document.getElementById('playPauseBtn');
+  const status = document.getElementById('status');
+
+  const bassControl = document.getElementById('bass');
+  const midControl = document.getElementById('mid');
+  const trebleControl = document.getElementById('treble');
+  const compressorThresholdControl = document.getElementById('compressorThreshold');
+  const reverbMixControl = document.getElementById('reverbMix');
+
+  let audioCtx;
+  let sourceNode;
+  let bassEQ, midEQ, trebleEQ;
+  let compressor;
+  let convolver;
+  let gainNode;
+  let dryGainNode;
+  let reverbGainNode;
+  let buffer;
+  let isPlaying = false;
+
+  // Load impulse response for reverb (short small hall)
+  // We'll fetch a publicly available impulse response.
+  const IR_URL = 'https://cdn.jsdelivr.net/gh/jiaaro/pydub@master/tests/data/irHall.wav';
+
+  async function loadImpulseResponse(ctx, url) {
+    try {
+      const response = await fetch(url);
+      const arraybuffer = await response.arrayBuffer();
+      return await ctx.decodeAudioData(arraybuffer);
+    } catch (err) {
+      status.textContent = 'Falló cargar la reverberación.';
+      return null;
+    }
+  }
+
+  function createAudioContext() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+
+  fileInput.addEventListener('change', async () => {
+    if (!fileInput.files.length) return;
+    status.textContent = 'Cargando...';
+    createAudioContext();
+
+    if (sourceNode) {
+      stopAudio();
+    }
+
+    const file = fileInput.files[0];
+    const arrayBuffer = await file.arrayBuffer();
+    buffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+    await setupAudioNodes();
+    status.textContent = 'Archivo cargado. Presione reproducir.';
+    playPauseBtn.disabled = false;
+    playPauseBtn.textContent = 'Reproducir';
+  });
+
+  async function setupAudioNodes() {
+    if (sourceNode) {
+      sourceNode.disconnect();
+    }
+
+    sourceNode = audioCtx.createBufferSource();
+    sourceNode.buffer = buffer;
+
+    // Create EQ filters
+    // Bass: low shelf around 150Hz
+    bassEQ = audioCtx.createBiquadFilter();
+    bassEQ.type = 'lowshelf';
+    bassEQ.frequency.value = 150;
+    bassEQ.gain.value = bassControl.value;
+
+    // Mid: peaking filter around 1000Hz
+    midEQ = audioCtx.createBiquadFilter();
+    midEQ.type = 'peaking';
+    midEQ.frequency.value = 1000;
+    midEQ.Q.value = 1;
+    midEQ.gain.value = midControl.value;
+
+    // Treble: high shelf around 4000Hz
+    trebleEQ = audioCtx.createBiquadFilter();
+    trebleEQ.type = 'highshelf';
+    trebleEQ.frequency.value = 4000;
+    trebleEQ.gain.value = trebleControl.value;
+
+    // Compressor
+    compressor = audioCtx.createDynamicsCompressor();
+    compressor.threshold.value = compressorThresholdControl.value;
+    compressor.knee.value = 30;
+    compressor.ratio.value = 12;
+    compressor.attack.value = 0.005;
+    compressor.release.value = 0.25;
+
+    // Convolver for reverb
+    convolver = audioCtx.createConvolver();
+    convolver.buffer = await loadImpulseResponse(audioCtx, IR_URL) || null;
+
+    // Dry and wet gains for reverb mix
+    dryGainNode = audioCtx.createGain();
+    reverbGainNode = audioCtx.createGain();
+
+    // Master gain
+    gainNode = audioCtx.createGain();
+
+    // Connect nodes chain:
+    // Source -> bassEQ -> midEQ -> trebleEQ -> compressor -> dryGain -> gainNode -> destination
+    //                           |                                 \-> convolver -> reverbGain -> gainNode
+
+    sourceNode.connect(bassEQ);
+    bassEQ.connect(midEQ);
+    midEQ.connect(trebleEQ);
+    trebleEQ.connect(compressor);
+
+    // Split to dry and wet
+    compressor.connect(dryGainNode);
+    compressor.connect(convolver);
+
+    convolver.connect(reverbGainNode);
+
+    dryGainNode.connect(gainNode);
+    reverbGainNode.connect(gainNode);
+
+    gainNode.connect(audioCtx.destination);
+
+    // Set initial reverb mix
+    updateReverbMix();
+
+    // Set up event listeners to update parameters on change
+    bassControl.oninput = () => { if(bassEQ) bassEQ.gain.value = bassControl.value; };
+    midControl.oninput = () => { if(midEQ) midEQ.gain.value = midControl.value; };
+    trebleControl.oninput = () => { if(trebleEQ) trebleEQ.gain.value = trebleControl.value; };
+    compressorThresholdControl.oninput = () => { if(compressor) compressor.threshold.value = compressorThresholdControl.value; };
+    reverbMixControl.oninput = updateReverbMix;
+  }
+
+  function updateReverbMix() {
+    const mix = reverbMixControl.value / 100;
+    if (dryGainNode && reverbGainNode) {
+      dryGainNode.gain.value = 1 - mix;
+      reverbGainNode.gain.value = mix;
+    }
+  }
+
+  playPauseBtn.addEventListener('click', () => {
+    if (!isPlaying) {
+      playAudio();
+    } else {
+      stopAudio();
+    }
+  });
+
+  function playAudio() {
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+
+    // Need to recreate sourceNode with the buffer because BufferSourceNodes are one-shot
+    setupAudioNodes().then(() => {
+      sourceNode.start();
+      isPlaying = true;
+      playPauseBtn.textContent = 'Pausar';
+      status.textContent = 'Reproduciendo...';
+      sourceNode.onended = () => {
+        isPlaying = false;
+        playPauseBtn.textContent = 'Reproducir';
+        status.textContent = 'Reproducción terminada.';
+      };
+    });
+  }
+
+  function stopAudio() {
+    if (sourceNode && isPlaying) {
+      try {
+        sourceNode.stop();
+      } catch (e) {
+        // ignore if already stopped
+      }
+    }
+    isPlaying = false;
+    playPauseBtn.textContent = 'Reproducir';
+    status.textContent = 'Pausado.';
+  }
+
+  // Accessibility keyboard support for label
+  document.getElementById('file-label').addEventListener('keydown', e => {
+    if(e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
+</script>
+
+</body>
+</html>
+
